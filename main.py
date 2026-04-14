@@ -1,5 +1,5 @@
-from pyscript import document, window
-from pyodide.ffi import create_proxy
+from pyscript import document, window # type: ignore
+from pyodide.ffi import create_proxy # type: ignore
 import asyncio 
 
 # 游戏设置类
