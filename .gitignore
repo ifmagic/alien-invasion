@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+node_modules/
+build/
+dist/
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

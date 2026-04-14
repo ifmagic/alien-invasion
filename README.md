@@ -1,67 +1,92 @@
-<!--
- * @Author: taobo
- * @Date: 2020-11-11 14:18:45
- * @LastEditTime: 2020-11-13 21:29:22
--->
-# alien-invasion
-[![Build Status](https://travis-ci.com/tryturned/alien-invasion.svg?branch=main)](https://travis-ci.com/tryturned/alien-invasion)
+# Alien Invasion - 浏览器版
 
-## 目录
-[1. 外星人入侵：使用 Python 开发游戏](https://github.com/tryturned/alien-invasion#1-%E5%A4%96%E6%98%9F%E4%BA%BA%E5%85%A5%E4%BE%B5%E4%BD%BF%E7%94%A8-python-%E5%BC%80%E5%8F%91%E6%B8%B8%E6%88%8F)  
+一个基于 PyScript 和 HTML5 Canvas 的太空射击游戏，是经典 Pygame 版本的浏览器移植版。
 
-[2. 项目规划](https://github.com/tryturned/alien-invasion#2-%E9%A1%B9%E7%9B%AE%E8%A7%84%E5%88%92)  
+## 游戏介绍
 
-[3. pygame 模块常用函数](https://github.com/tryturned/alien-invasion#3-pygame-%E6%A8%A1%E5%9D%97%E5%B8%B8%E7%94%A8%E5%87%BD%E6%95%B0)  
+Alien Invasion 是一款经典的太空射击游戏，玩家控制一艘蓝色飞船，通过左右移动和发射子弹来消灭不断入侵的红色外星人。游戏包含以下特色：
 
-[4. 设计流程](https://github.com/tryturned/alien-invasion#4-%E8%AE%BE%E8%AE%A1%E6%B5%81%E7%A8%8B)  
+- 🎮 流畅的游戏体验
+- 🚀 可控制的飞船移动
+- 🔫 子弹发射系统
+- 👾 外星人群体移动和攻击
+- 📈 分数和等级系统
+- 💖 3 条生命值
+- ⚡ 随关卡增加的游戏速度
 
+## 技术栈
 
-## 1. 外星人入侵：使用 Python 开发游戏
-将使用 `Pygame` 包来开发一款 2D 游戏，它在玩家每消灭一群向下移动的外星人后，都将玩家提高一个等级；而等级越高，游戏的节奏越快，难度越大。完成这个项目后，你将获得自己动手使用 `Pygame` 开发 2D 游戏所需的技能。
-## 2. 项目规划
-在游戏《外星人入侵》中，玩家控制着一艘最初出现在屏幕底部中央的飞船。玩家可以使用箭头键左右移动飞船，还可使用空格键进行射击。游戏开始时，一群外星人出现在天空中，他们在屏幕中向下移动。玩家的任务是射杀这些外星人。玩家将所有外星人都消灭干净后，将出现一群新的外星人，他们移动的速度更快。只要有外星人撞到了玩家的飞船或到达了屏幕底部，玩家就损失一艘飞船。玩家损失三艘飞船后，游戏结束。   
+- **前端**：HTML5, CSS, JavaScript
+- **Python**：使用 PyScript 运行在浏览器中
+- **渲染**：HTML5 Canvas
+- **部署**：GitHub Pages
 
-## 3. pygame 模块常用函数
+## 如何运行
 
-函数名 | 作用
-|:---|:---|
-pygame.init() | 初始化背景设置
-screen = pygame.display.set_mode((1200, 600))| 设置显示窗口大小
-pygame.display.set_caption('Alien Invasion')|设置标题
-pygame.event.get() | 捕获键盘鼠标事件
-screen.fill(bg_color) |  设置背景色
-pygame.display.flip()|刷新窗口，让最近绘制的屏幕可见  
-self.screen_rect = self.screen.get_rect()|获取对象外接矩形
-self.image = pygame.image.load('images/ship.bmp')|加载图片
-self.screen.blit(self.image, self.rect) | 放置图像至指定的位置
+### 本地运行
 
-## 4. 设计流程
-### 4.1 基于`Pygame` 的基本框架
-```python
-  pygame.init()
-  pygame.display.set_caption('Alien Invasion')
-  screen = pygame.display.set_mode((ai_setting.screen_height, ai_setting.screen_width))
+1. 克隆项目到本地：
+   ```bash
+   git clone https://github.com/your-username/alien-invasion.git
+   cd alien-invasion
+   ```
+
+2. 启动本地 HTTP 服务器：
+   ```bash
+   python3 -m http.server 8000
+   ```
+
+3. 打开浏览器访问：
+   ```
+   http://localhost:8000
+   ```
+
+### 如何玩
+
+1. 按 **空格键** 开始游戏
+2. 使用 **左/右方向键** 移动飞船
+3. 按 **空格键** 发射子弹
+4. 消灭所有外星人进入下一关
+5. 小心外星人的攻击，你有 3 条生命
+
+## 项目结构
+
 ```
-### 4.2 设计实现飞船模块
+alien-invasion/
+├── index.html          # 主页面文件
+├── main.py             # Python 游戏逻辑
+├── styles.css          # 样式文件
+├── LICENSE             # MIT 许可证文件
+├── README.md           # 项目说明文档
+├── .gitignore          # Git 忽略文件配置
+└── .github/workflows/  # GitHub Actions 配置
+    └── deploy.yml      # 自动部署到 GitHub Pages
+```
 
-> link: [ship.py](./ship.py)
+## 部署到 GitHub Pages
 
-### 4.3 设计实现子弹模块
+项目已配置 GitHub Actions，当代码推送到 `main` 分支时，会自动部署到 GitHub Pages。
 
-> link: [bullet.py](./bullet.py)
+1. 确保你的仓库已启用 GitHub Pages
+2. 推送到 `main` 分支
+3. 等待 GitHub Actions 完成部署
+4. 访问 `https://your-username.github.io/alien-invasion` 玩游戏
 
-### 4.3 设计实现外星人模块
-在该环节，我们将在游戏《外星人入侵》中添加外星人。   
+## 开发说明
 
-- 首先，我们在屏幕上边缘附近添加一个外星人，然后生成一群外星人。我们让这群外星人向两边和下面移动，并删除被子弹击中的外星人。
-- 最后，我们将显示玩家拥有的飞船数量，并在玩家的飞船用完后结束游戏。  
+- 游戏使用 PyScript 2024.1.1 版本
+- 所有游戏逻辑都在 `main.py` 中实现
+- 样式在 `styles.css` 中定义
+- 游戏使用 Canvas API 进行绘制
 
-> link: [alien.py](./alien.py)
+## 未来计划
 
-### 4.4 记分系统
-在本章中，我们将结束游戏《外星人入侵》的开发。我们将添加一个Play按钮，用于根据需要启动游戏以及在游戏结束后重启游戏。我们还将修改这个游戏，使其在玩家的等级提高时加快节奏，并实现一个记分系统。阅读本章后，你将掌握足够多的知识，能够开始编写随玩家等级提高而加大难度以及显示得分的游戏。
+- 添加音效
+- 实现更复杂的外星人行为
+- 添加电源-ups
+- 增加游戏难度设置
+- 实现最高分保存
 
-## 5. 最终成果
-[![D9QQw8.png](https://z3.ax1x.com/2020/11/13/D9QQw8.png)](https://imgtu.com/i/D9QQw8)
+## 许可证
 
-
+MIT
