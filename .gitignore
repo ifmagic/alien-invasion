@@ -9,6 +9,7 @@ __pycache__/
 *.swp
 *.swo
 *~
+/example
 
 # OS
 .DS_Store
