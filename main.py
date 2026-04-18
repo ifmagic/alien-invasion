@@ -1,28 +1,32 @@
-from pyscript import document, window # type: ignore
-from pyodide.ffi import create_proxy # type: ignore
-import asyncio 
+from pyscript import document, window
+from pyodide.ffi import create_proxy
+import asyncio
+import random
+import math
 
-# 游戏设置类
 class Settings:
     def __init__(self):
         self.screen_height = 600
         self.screen_width = 800
-        self.bg_color = "#000000"
-        self.bullet_width = 3
-        self.bullet_height = 15
+        self.bg_color = "#0a0a1a"
+        self.bullet_width = 4
+        self.bullet_height = 18
         self.bullet_color = "#ffdd00"
-        self.bullets_allowed = 5
-        self.alien_drop_speed = 10
+        self.bullets_allowed = 6
+        self.alien_drop_speed = 12
         self.fleet_direction = 1
         self.ships_limit = 3
-        self.speedup_scale = 1.1
+        self.speedup_scale = 1.12
         self.score_scale = 1.5
+        self.alien_bullet_color = "#ff4444"
+        self.alien_bullet_speed = 3
+        self.alien_fire_rate = 0.003
         self.initialize_dynamic_settings()
     
     def initialize_dynamic_settings(self):
-        self.bullet_speed_factor = 2
-        self.alien_speed_factor = 0.5
-        self.ship_speed_factor = 3
+        self.bullet_speed_factor = 3
+        self.alien_speed_factor = 0.7
+        self.ship_speed_factor = 4.5
         self.alien_points = 50
     
     def increase_speed(self):
@@ -31,7 +35,36 @@ class Settings:
         self.ship_speed_factor *= self.speedup_scale
         self.alien_points = int(self.alien_points * self.score_scale)
 
-# 飞船类
+class Star:
+    def __init__(self, width, height):
+        self.x = random.randint(0, width)
+        self.y = random.randint(0, height)
+        self.size = random.uniform(0.5, 2)
+        self.speed = random.uniform(0.2, 0.8)
+        self.brightness = random.uniform(0.3, 1)
+    
+    def update(self, height):
+        self.y += self.speed
+        if self.y > height:
+            self.y = 0
+            self.x = random.randint(0, 800)
+
+class Particle:
+    def __init__(self, x, y, color):
+        self.x = x
+        self.y = y
+        self.color = color
+        self.vx = random.uniform(-3, 3)
+        self.vy = random.uniform(-3, 3)
+        self.life = 1
+        self.size = random.uniform(2, 5)
+    
+    def update(self):
+        self.x += self.vx
+        self.y += self.vy
+        self.life -= 0.03
+        self.size *= 0.95
+
 class Ship:
     def __init__(self, ai_setting, canvas):
         self.canvas = canvas
@@ -39,30 +72,58 @@ class Ship:
         self.moving_right = False
         self.moving_left = False
         
-        self.width = 50
-        self.height = 60
+        self.width = 55
+        self.height = 65
         self.centerx = ai_setting.screen_width / 2
-        self.bottom = ai_setting.screen_height - 10
+        self.bottom = ai_setting.screen_height - 15
+        self.engine_glow = 0
     
     def update(self):
+        self.engine_glow = (self.engine_glow + 0.1) % (2 * math.pi)
         if self.moving_right and self.centerx + self.width / 2 < self.ai_setting.screen_width:
             self.centerx += self.ai_setting.ship_speed_factor
         elif self.moving_left and self.centerx - self.width / 2 > 0:
             self.centerx -= self.ai_setting.ship_speed_factor
     
     def draw(self, ctx):
-        ctx.fillStyle = "#3b82f6"
+        glow_intensity = 0.5 + 0.3 * math.sin(self.engine_glow)
+        
+        gradient = ctx.createRadialGradient(
+            self.centerx, self.bottom + 5, 0,
+            self.centerx, self.bottom + 5, 30
+        )
+        gradient.addColorStop(0, f"rgba(59, 130, 246, {glow_intensity})")
+        gradient.addColorStop(1, "rgba(59, 130, 246, 0)")
+        ctx.fillStyle = gradient
+        ctx.fillRect(self.centerx - 30, self.bottom - 10, 60, 40)
+        
+        ctx.fillStyle = "#2563eb"
         ctx.beginPath()
         ctx.moveTo(self.centerx, self.bottom - self.height)
         ctx.lineTo(self.centerx - self.width / 2, self.bottom)
+        ctx.lineTo(self.centerx - self.width / 4, self.bottom - 15)
+        ctx.lineTo(self.centerx, self.bottom - 5)
+        ctx.lineTo(self.centerx + self.width / 4, self.bottom - 15)
         ctx.lineTo(self.centerx + self.width / 2, self.bottom)
+        ctx.closePath()
+        ctx.fill()
+        
+        ctx.fillStyle = "#60a5fa"
+        ctx.beginPath()
+        ctx.ellipse(self.centerx, self.bottom - self.height / 2, 8, 12, 0, 0, 2 * math.pi)
+        ctx.fill()
+        
+        ctx.fillStyle = f"rgba(251, 191, 36, {glow_intensity})"
+        ctx.beginPath()
+        ctx.moveTo(self.centerx - 10, self.bottom)
+        ctx.lineTo(self.centerx, self.bottom + 15 + glow_intensity * 10)
+        ctx.lineTo(self.centerx + 10, self.bottom)
         ctx.closePath()
         ctx.fill()
     
     def center_ship(self):
         self.centerx = self.ai_setting.screen_width / 2
 
-# 子弹类
 class Bullet:
     def __init__(self, ai_setting, ship):
         self.ai_setting = ai_setting
@@ -77,17 +138,48 @@ class Bullet:
         self.y -= self.speed_factor
     
     def draw(self, ctx):
-        ctx.fillStyle = self.color
+        gradient = ctx.createLinearGradient(self.x, self.y, self.x, self.y + self.height)
+        gradient.addColorStop(0, "#ffffff")
+        gradient.addColorStop(0.3, "#ffdd00")
+        gradient.addColorStop(1, "#ff8800")
+        ctx.fillStyle = gradient
+        ctx.shadowColor = "#ffdd00"
+        ctx.shadowBlur = 10
         ctx.fillRect(self.x, self.y, self.width, self.height)
+        ctx.shadowBlur = 0
 
-# 外星人类
+class AlienBullet:
+    def __init__(self, ai_setting, alien):
+        self.ai_setting = ai_setting
+        self.x = alien.x + alien.width / 2 - 2
+        self.y = alien.y + alien.height
+        self.width = 4
+        self.height = 16
+        self.color = ai_setting.alien_bullet_color
+        self.speed_factor = ai_setting.alien_bullet_speed
+    
+    def update(self):
+        self.y += self.speed_factor
+    
+    def draw(self, ctx):
+        gradient = ctx.createLinearGradient(self.x, self.y, self.x, self.y + self.height)
+        gradient.addColorStop(0, "#ff4444")
+        gradient.addColorStop(0.5, "#ff0000")
+        gradient.addColorStop(1, "#aa0000")
+        ctx.fillStyle = gradient
+        ctx.shadowColor = "#ff0000"
+        ctx.shadowBlur = 8
+        ctx.fillRect(self.x, self.y, self.width, self.height)
+        ctx.shadowBlur = 0
+
 class Alien:
     def __init__(self, ai_setting, x, y):
         self.ai_setting = ai_setting
         self.x = x
         self.y = y
-        self.width = 40
-        self.height = 30
+        self.width = 44
+        self.height = 34
+        self.anim_offset = random.uniform(0, math.pi * 2)
     
     def check_edges(self):
         if self.x + self.width >= self.ai_setting.screen_width:
@@ -98,47 +190,100 @@ class Alien:
     
     def update(self):
         self.x += self.ai_setting.alien_speed_factor * self.ai_setting.fleet_direction
+        self.anim_offset += 0.1
     
     def draw(self, ctx):
-        ctx.fillStyle = "#ef4444"
+        bob_y = self.y + 2 * math.sin(self.anim_offset)
+        
+        ctx.fillStyle = "#dc2626"
         ctx.beginPath()
-        ctx.arc(self.x + self.width / 2, self.y + self.height / 2, self.width / 2, 0, 2 * 3.14159)
+        ctx.ellipse(self.x + self.width / 2, bob_y + self.height / 2, 
+                   self.width / 2, self.height / 2, 0, 0, 2 * math.pi)
         ctx.fill()
+        
+        ctx.fillStyle = "#f87171"
+        ctx.beginPath()
+        ctx.ellipse(self.x + self.width / 2, bob_y + self.height / 3, 
+                   self.width / 3, self.height / 3, 0, 0, 2 * math.pi)
+        ctx.fill()
+        
+        ctx.fillStyle = "#fff"
+        ctx.beginPath()
+        ctx.arc(self.x + self.width / 3, bob_y + self.height / 2, 6, 0, 2 * math.pi)
+        ctx.arc(self.x + 2 * self.width / 3, bob_y + self.height / 2, 6, 0, 2 * math.pi)
+        ctx.fill()
+        
         ctx.fillStyle = "#000"
         ctx.beginPath()
-        ctx.arc(self.x + self.width / 3, self.y + self.height / 2, 5, 0, 2 * 3.14159)
-        ctx.arc(self.x + 2 * self.width / 3, self.y + self.height / 2, 5, 0, 2 * 3.14159)
+        ctx.arc(self.x + self.width / 3 + 1, bob_y + self.height / 2, 3, 0, 2 * math.pi)
+        ctx.arc(self.x + 2 * self.width / 3 + 1, bob_y + self.height / 2, 3, 0, 2 * math.pi)
         ctx.fill()
+        
+        ctx.strokeStyle = "#dc2626"
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.moveTo(self.x + self.width / 4, bob_y)
+        ctx.lineTo(self.x + self.width / 4 - 5, bob_y - 8)
+        ctx.moveTo(self.x + 3 * self.width / 4, bob_y)
+        ctx.lineTo(self.x + 3 * self.width / 4 + 5, bob_y - 8)
+        ctx.stroke()
 
-# 游戏统计类
 class GameStats:
     def __init__(self, ai_setting):
         self.ai_setting = ai_setting
         self.reset_stats()
         self.game_active = False
-        self.high_score = 0
+        self.game_paused = False
+        self.high_score = self.load_high_score()
+    
+    def load_high_score(self):
+        try:
+            stored = window.localStorage.getItem("alien_invasion_high_score")
+            return int(stored) if stored else 0
+        except:
+            return 0
+    
+    def save_high_score(self):
+        if self.score > self.high_score:
+            self.high_score = self.score
+            try:
+                window.localStorage.setItem("alien_invasion_high_score", str(self.high_score))
+            except:
+                pass
     
     def reset_stats(self):
         self.ships_left = self.ai_setting.ships_limit
         self.score = 0
         self.level = 1
 
-# 全局变量
 ai_setting = Settings()
 stats = GameStats(ai_setting)
 canvas = None
 ctx = None
 ship = None
 bullets = []
+alien_bullets = []
 aliens = []
+particles = []
+stars = []
 keys_pressed = {}
+
+def create_stars():
+    global stars
+    stars = []
+    for _ in range(150):
+        stars.append(Star(ai_setting.screen_width, ai_setting.screen_height))
+
+def create_explosion(x, y, color="#ff4444"):
+    for _ in range(15):
+        particles.append(Particle(x, y, color))
 
 def create_fleet():
     global aliens
     aliens = []
-    alien_width = 40
-    alien_height = 30
-    ship_height = 60
+    alien_width = 44
+    alien_height = 34
+    ship_height = 65
     available_space_x = ai_setting.screen_width - 2 * alien_width
     number_aliens_x = int(available_space_x / (2 * alien_width))
     available_space_y = ai_setting.screen_height - 3 * alien_height - ship_height
@@ -147,7 +292,7 @@ def create_fleet():
     for row_number in range(number_aliens_y):
         for alien_number in range(number_aliens_x):
             alien_x = alien_width + 2 * alien_width * alien_number
-            alien_y = alien_height + 2 * alien_height * row_number
+            alien_y = alien_height + 2 * alien_height * row_number + 50
             alien = Alien(ai_setting, alien_x, alien_y)
             aliens.append(alien)
 
@@ -161,6 +306,11 @@ def change_fleet_direction():
     for alien in aliens:
         alien.y += ai_setting.alien_drop_speed
     ai_setting.fleet_direction *= -1
+
+def alien_fire():
+    if aliens and random.random() < ai_setting.alien_fire_rate * (1 + stats.level * 0.1):
+        shooter = random.choice(aliens)
+        alien_bullets.append(AlienBullet(ai_setting, shooter))
 
 def check_bullet_alien_collisions():
     global bullets, aliens
@@ -176,8 +326,8 @@ def check_bullet_alien_collisions():
                 bullets_to_remove.append(i)
                 aliens_to_remove.append(j)
                 stats.score += ai_setting.alien_points
+                create_explosion(alien.x + alien.width / 2, alien.y + alien.height / 2)
     
-    # 反向删除以避免索引问题
     for i in sorted(bullets_to_remove, reverse=True):
         if i < len(bullets):
             del bullets[i]
@@ -187,9 +337,33 @@ def check_bullet_alien_collisions():
     
     if len(aliens) == 0:
         bullets = []
+        alien_bullets.clear()
         ai_setting.increase_speed()
         create_fleet()
         stats.level += 1
+        stats.save_high_score()
+
+def check_alien_bullet_ship_collisions():
+    global alien_bullets
+    bullets_to_remove = []
+    
+    ship_left = ship.centerx - ship.width / 2
+    ship_right = ship.centerx + ship.width / 2
+    ship_top = ship.bottom - ship.height
+    ship_bottom = ship.bottom
+    
+    for i, bullet in enumerate(alien_bullets):
+        if (bullet.x < ship_right and 
+            bullet.x + bullet.width > ship_left and 
+            bullet.y < ship_bottom and 
+            bullet.y + bullet.height > ship_top):
+            bullets_to_remove.append(i)
+            return True
+    
+    for i in sorted(bullets_to_remove, reverse=True):
+        if i < len(alien_bullets):
+            del alien_bullets[i]
+    return False
 
 def check_ship_collisions():
     for alien in aliens:
@@ -205,6 +379,7 @@ def check_ship_collisions():
             alien_right > ship_left and 
             alien.y < ship_bottom and 
             alien_bottom > ship_top):
+            create_explosion(ship.centerx, ship.bottom - ship.height / 2, "#3b82f6")
             return True
     return False
 
@@ -214,18 +389,41 @@ def check_aliens_bottom():
             return True
     return False
 
+def update_particles():
+    global particles
+    particles_to_remove = []
+    for i, particle in enumerate(particles):
+        particle.update()
+        if particle.life <= 0:
+            particles_to_remove.append(i)
+    
+    for i in sorted(particles_to_remove, reverse=True):
+        if i < len(particles):
+            del particles[i]
+
+def draw_particles(ctx):
+    for particle in particles:
+        ctx.globalAlpha = particle.life
+        ctx.fillStyle = particle.color
+        ctx.beginPath()
+        ctx.arc(particle.x, particle.y, particle.size, 0, 2 * math.pi)
+        ctx.fill()
+    ctx.globalAlpha = 1
+
 async def game_loop():
-    global canvas, ctx, ship, bullets, aliens, keys_pressed
-    window.console.log("游戏循环开始")
+    global canvas, ctx, ship, bullets, alien_bullets, aliens, keys_pressed, particles, stars
     
     while True:
         try:
-            # 清除画布
             ctx.fillStyle = ai_setting.bg_color
             ctx.fillRect(0, 0, canvas.width, canvas.height)
             
-            if stats.game_active:
-                # 更新飞船
+            for star in stars:
+                star.update(ai_setting.screen_height)
+                ctx.fillStyle = f"rgba(255, 255, 255, {star.brightness})"
+                ctx.fillRect(star.x, star.y, star.size, star.size)
+            
+            if stats.game_active and not stats.game_paused:
                 if keys_pressed.get("ArrowRight", False):
                     ship.moving_right = True
                 else:
@@ -238,7 +436,6 @@ async def game_loop():
                 
                 ship.update()
                 
-                # 更新子弹
                 bullets_to_remove = []
                 for i, bullet in enumerate(bullets):
                     bullet.update()
@@ -249,90 +446,148 @@ async def game_loop():
                     if i < len(bullets):
                         del bullets[i]
                 
-                # 更新外星人
+                alien_bullets_to_remove = []
+                for i, bullet in enumerate(alien_bullets):
+                    bullet.update()
+                    if bullet.y >= ai_setting.screen_height:
+                        alien_bullets_to_remove.append(i)
+                
+                for i in sorted(alien_bullets_to_remove, reverse=True):
+                    if i < len(alien_bullets):
+                        del alien_bullets[i]
+                
                 check_fleet_edges()
                 for alien in aliens:
                     alien.update()
                 
-                # 碰撞检测
+                alien_fire()
+                
                 check_bullet_alien_collisions()
                 
-                if check_ship_collisions() or check_aliens_bottom():
+                ship_hit = check_alien_bullet_ship_collisions()
+                
+                if ship_hit or check_ship_collisions() or check_aliens_bottom():
                     if stats.ships_left > 0:
                         stats.ships_left -= 1
                         bullets = []
+                        alien_bullets.clear()
                         aliens = []
                         create_fleet()
                         ship.center_ship()
                         await asyncio.sleep(0.5)
                     else:
                         stats.game_active = False
+                        stats.save_high_score()
+                
+                update_particles()
             
-            # 绘制游戏对象
+            draw_particles(ctx)
             ship.draw(ctx)
             for bullet in bullets:
+                bullet.draw(ctx)
+            for bullet in alien_bullets:
                 bullet.draw(ctx)
             for alien in aliens:
                 alien.draw(ctx)
             
-            # 显示分数和等级
             ctx.fillStyle = "#ffffff"
-            ctx.font = "24px Arial"
-            ctx.fillText(f"Score: {stats.score}", 10, 30)
-            ctx.fillText(f"Level: {stats.level}", 10, 60)
-            ctx.fillText(f"Ships: {stats.ships_left}", 10, 90)
+            ctx.font = "bold 22px 'Orbitron', sans-serif"
+            ctx.fillText(f"SCORE: {stats.score}", 20, 35)
+            ctx.fillText(f"LEVEL: {stats.level}", 20, 65)
+            
+            ctx.fillStyle = "#facc15"
+            ctx.fillText(f"HIGH: {stats.high_score}", canvas.width - 160, 35)
+            
+            ctx.fillStyle = "#ef4444"
+            hearts = "❤ " * stats.ships_left
+            ctx.fillText(hearts, canvas.width - 120, 65)
+            
+            if stats.game_paused:
+                ctx.fillStyle = "rgba(0, 0, 0, 0.6)"
+                ctx.fillRect(0, 0, canvas.width, canvas.height)
+                ctx.fillStyle = "#facc15"
+                ctx.font = "bold 52px 'Orbitron', sans-serif"
+                ctx.textAlign = "center"
+                ctx.fillText("PAUSED", canvas.width / 2, canvas.height / 2)
+                ctx.font = "24px sans-serif"
+                ctx.fillStyle = "#ffffff"
+                ctx.fillText("Press P to Resume", canvas.width / 2, canvas.height / 2 + 50)
+                ctx.textAlign = "left"
             
             if not stats.game_active:
+                ctx.fillStyle = "rgba(0, 0, 0, 0.7)"
+                ctx.fillRect(0, 0, canvas.width, canvas.height)
+                
+                if stats.score > 0:
+                    ctx.fillStyle = "#ffffff"
+                    ctx.font = "32px 'Orbitron', sans-serif"
+                    ctx.textAlign = "center"
+                    ctx.fillText(f"FINAL SCORE: {stats.score}", canvas.width / 2, canvas.height / 2 - 60)
+                
                 ctx.fillStyle = "#3b82f6"
-                ctx.font = "48px Arial"
-                ctx.fillText("Press Space to Play", canvas.width / 2 - 200, canvas.height / 2)
+                ctx.font = "bold 48px 'Orbitron', sans-serif"
+                ctx.textAlign = "center"
+                ctx.fillText("ALIEN INVASION", canvas.width / 2, canvas.height / 2)
+                
+                ctx.fillStyle = "#ffffff"
+                ctx.font = "24px sans-serif"
+                ctx.fillText("Press SPACE to Play", canvas.width / 2, canvas.height / 2 + 60)
+                ctx.textAlign = "left"
         
         except Exception as e:
-            window.console.error(f"循环错误: {e}")
+            window.console.error(f"Loop error: {e}")
         
         await asyncio.sleep(0.016)
 
 def on_key_down(e):
-    global keys_pressed, stats, ship, bullets, aliens
+    global keys_pressed, stats, ship, bullets, aliens, alien_bullets
     keys_pressed[e.key] = True
     
     if e.key == " ":
+        e.preventDefault()
         if not stats.game_active:
             ai_setting.initialize_dynamic_settings()
             stats.reset_stats()
             stats.game_active = True
             bullets = []
+            alien_bullets.clear()
+            particles.clear()
             aliens = []
             create_fleet()
             ship.center_ship()
-        else:
+        elif not stats.game_paused:
             if len(bullets) < ai_setting.bullets_allowed:
                 new_bullet = Bullet(ai_setting, ship)
                 bullets.append(new_bullet)
-    e.preventDefault()
+    
+    if e.key.lower() == "p" and stats.game_active:
+        stats.game_paused = not stats.game_paused
+        e.preventDefault()
 
 def on_key_up(e):
     global keys_pressed
     keys_pressed[e.key] = False
-    e.preventDefault()
+
+def hide_loading_overlay():
+    overlay = document.getElementById("loadingOverlay")
+    if overlay:
+        overlay.classList.add("hidden")
 
 async def main():
-    global canvas, ctx, ship, bullets, aliens
-    window.console.log("主函数开始")
+    global canvas, ctx, ship
+    window.console.log("🚀 Alien Invasion Starting...")
     
-    # 获取 Canvas 元素和 2D 上下文
     canvas = document.getElementById("gameCanvas")
     ctx = canvas.getContext("2d")
     
-    # 初始化游戏对象
     ship = Ship(ai_setting, canvas)
+    create_stars()
     
-    # 添加键盘事件监听
+    hide_loading_overlay()
+    
     document.addEventListener("keydown", create_proxy(on_key_down))
     document.addEventListener("keyup", create_proxy(on_key_up))
     
-    # 启动游戏循环
     await game_loop()
 
-# 启动主函数
 asyncio.ensure_future(main())
